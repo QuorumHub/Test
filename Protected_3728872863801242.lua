@@ -295,7 +295,7 @@ Section:NewToggle("Hit All Script", "You can attack Host and Performer team memb
                         else
                             visualizer.Parent = nil
                         end
-                        local reach = 10
+                        local reach = 50
                         if reach then
                             if reachType == "Sphere" then
                                 visualizer.Shape = Enum.PartType.Ball
