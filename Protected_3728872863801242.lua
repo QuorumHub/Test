@@ -211,9 +211,7 @@ end)
 
 
 local active = false
-local trueActive = false
 local dmgEnabled = false
-local visualizerEnabled = false
 
 local visualizer = Instance.new("Part")
 visualizer.Transparency = 1 -- Полностью прозрачный
@@ -223,47 +221,25 @@ visualizer.Size = Vector3.new(0.2, 0.2, 0.2) -- Уменьшенный разм�
 visualizer.BottomSurface = Enum.SurfaceType.Smooth
 visualizer.TopSurface = Enum.SurfaceType.Smooth
 
-local function onHit(hit, handle)
-    local victim = hit.Parent:FindFirstChildOfClass("Humanoid")
-    if victim and victim.Parent.Name ~= game.Players.LocalPlayer.Name then
+local function onHit(hit)
+    local humanoid = hit.Parent:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.Parent.Name ~= game.Players.LocalPlayer.Name then
         if dmgEnabled then
             for _, v in pairs(hit.Parent:GetChildren()) do
-                if v:IsA("Part") then
-                    firetouchinterest(v, handle, 0)
-                    firetouchinterest(v, handle, 1)
+                if v:IsA("BasePart") then
+                    v.LocalTransparencyModifier = 0.5 -- Делаем объекты полупрозрачными для визуализации
+                    wait(0.2)
+                    v.LocalTransparencyModifier = 0 -- Возвращаем обратно
                 end
             end
         else
-            firetouchinterest(hit, handle, 0)
-            firetouchinterest(hit, handle, 1)
-        end
-    end
-end
-
-local function getWhiteList()
-    local wl = {}
-    for _, v in pairs(game.Players:GetPlayers()) do
-        if v ~= plr then
-            local char = v.Character
-            if char then
-                for _, q in pairs(char:GetChildren()) do
-                    if q:IsA("Part") then
-                        table.insert(wl, q)
-                    end
+            for _, v in pairs(hit.Parent:GetChildren()) do
+                if v:IsA("BasePart") then
+                    v.LocalTransparencyModifier = 0.5 -- Делаем объекты полупрозрачными для визуализации
+                    wait(0.2)
+                    v.LocalTransparencyModifier = 0 -- Возвращаем обратно
+                    break
                 end
-            end
-        end
-    end
-    return wl
-end
-
-local function checkHitPlayers(handle, reach)
-    for _, v in pairs(game.Players:GetPlayers()) do
-        local hrp = v.Character and v.Character:FindFirstChild("HumanoidRootPart")
-        if hrp and handle then
-            local mag = (hrp.Position - handle.Position).magnitude
-            if mag <= reach then
-                onHit(hrp, handle)
             end
         end
     end
@@ -272,55 +248,23 @@ end
 Section:NewToggle("Hit All Script", "You can attack Host and Performer team members as an Auditioner, and as a Host, you can attack Judges and Auditioners.", function(state)
     if state then
         active = true
-        trueActive = true
-        local reachType = "Sphere"
         dmgEnabled = true
-        visualizerEnabled = false
+        visualizer.Parent = workspace
 
-        repeat wait(0.5)  -- Проверяем раз в полсекунды, а не каждый кадр
-            if not active or not trueActive then
-                return
-            end
-            local s = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
-            if s then
-                local handle = s:FindFirstChild("Handle") or s:FindFirstChildOfClass("Part")
-                if handle then
-                    if visualizerEnabled then
-                        visualizer.Parent = workspace
-                    else
-                        visualizer.Parent = nil
-                    end
-                    local reach = 9999 -- Уменьшенный reach
-                    if reach then
-                        if reachType == "Sphere" then
-                            visualizer.Shape = Enum.PartType.Ball
-                            visualizer.Size = Vector3.new(reach, reach, reach)
-                            visualizer.CFrame = handle.CFrame
-                            checkHitPlayers(handle, reach)
-                        elseif reachType == "Line" then
-                            local origin = (handle.CFrame * CFrame.new(0, 0, -2)).p
-                            local ray = Ray.new(origin, handle.CFrame.lookVector * -reach)
-                            local p, pos = workspace:FindPartOnRayWithWhitelist(ray, getWhiteList())
-                            visualizer.Shape = Enum.PartType.Block
-                            visualizer.Size = Vector3.new(1, 0.8, reach)
-                            visualizer.CFrame = handle.CFrame * CFrame.new(0, 0, (reach / 2) + 2)
-                            if p then
-                                onHit(p, handle)
-                            else
-                                for _, v in pairs(handle:GetTouchingParts()) do
-                                    onHit(v, handle)
-                                end
-                            end
-                        end
-                    end
+        game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+            local tool = character:WaitForChild("Tool")
+            local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("Part")
+
+            tool.Touched:Connect(function(hit)
+                if active and handle then
+                    onHit(hit)
                 end
-            end
-        until not active or not trueActive
+            end)
+        end)
     else
         active = false
-        trueActive = false
         dmgEnabled = false
-        visualizerEnabled = false
+        visualizer.Parent = nil
     end
 end)
 
